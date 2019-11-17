@@ -90,8 +90,8 @@ let engine db { code ; contact } =
 
 (* Exercise *)
 
-let local_db =
-  make 10
+
+let local_db = (make 3);;
 
 let foo = {name = "foo"; phone_number = (1,2,3,4)} in
 let bar = {name = "bar"; phone_number = (4,3,2,1)} in
@@ -99,15 +99,27 @@ let (_, db, _) = insert local_db foo in
 let (_, db, _) = insert db bar in
 let (_, db, _) = delete db foo in
 let (_, db, _) = insert db foo in
-db
+db;;
 
+(*
+let local_db = (make 3) in
 let foo = {name = "foo"; phone_number = (1,2,3,4)} in
 let bar = {name = "bar"; phone_number = (4,3,2,1)} in
 let (_, db, _) = engine local_db {code = 0; contact = foo} in
 let (_, db, _) = engine db {code = 0; contact = bar} in
 let (_, db, _) = engine db {code = 1; contact = foo} in
 let (_, db, _) = engine db {code = 0; contact = foo} in
-db
+db;;
+
+I get the following result:
+{number_of_contacts = 2;
+ contacts =
+  [|{name = ""; phone_number = (0, 0, 0, 0)};
+    {name = "foo"; phone_number = (1, 2, 3, 4)};
+    {name = ""; phone_number = (0, 0, 0, 0)}|]}
+
+Which seems to show the bug?!
+*)
 
 let proof_of_bug =
   let foo = {name = "foo"; phone_number = (1,2,3,4)} in
@@ -151,8 +163,27 @@ let delete db contact =
     in
     (true, db', contact);;
 
-(* let update db contact =
- *   "replace this string with your implementation." ;;
- * 
- * let engine db { code ; contact } =
- *   "replace this string with your implementation." ;; *)
+let update db contact =
+  if db.number_of_contacts >= Array.length db.contacts
+  then (false, db, nobody)
+  else let (status, db', contact') = search db contact in
+    if status
+    then
+      let rec find_index contacts contact i =
+        match contacts with
+        | [] -> -1
+        | c :: _ when c.name = contact.name -> i
+        | _ :: tail -> find_index tail contact (i + 1)
+      in
+      let i = find_index (Array.to_list db.contacts) contact 0 in
+      (db.contacts.(i) <- contact);
+      (true, db, contact)
+    else insert db contact
+
+let engine db { code ; contact } =
+  match code with
+  | 0 -> insert db contact
+  | 1 -> delete db contact
+  | 2 -> search db contact
+  | 3 -> update db contact
+  | _ -> (false, db, nobody)
