@@ -54,12 +54,12 @@ let insert db contact =
     let (status, db, _) = search db contact in
     if status then (false, db, contact) else
       let cells i =
-	if i = db.number_of_contacts then contact else db.contacts.(i)
+        if i = db.number_of_contacts then contact else db.contacts.(i)
       in
       let db' = {
-          number_of_contacts = db.number_of_contacts + 1;
-          contacts = Array.init (Array.length db.contacts) cells
-        }
+        number_of_contacts = db.number_of_contacts + 1;
+        contacts = Array.init (Array.length db.contacts) cells
+      }
       in
       (true, db', contact);;
 
@@ -74,9 +74,9 @@ let delete db contact =
         db.contacts.(i)
     in
     let db' = {
-        number_of_contacts = db.number_of_contacts - 1;
-        contacts = Array.init (Array.length db.contacts) cells
-      }
+      number_of_contacts = db.number_of_contacts - 1;
+      contacts = Array.init (Array.length db.contacts) cells
+    }
     in
     (true, db', contact);;
 
@@ -90,14 +90,69 @@ let engine db { code ; contact } =
 
 (* Exercise *)
 
+let local_db =
+  make 10
+
+let foo = {name = "foo"; phone_number = (1,2,3,4)} in
+let bar = {name = "bar"; phone_number = (4,3,2,1)} in
+let (_, db, _) = insert local_db foo in
+let (_, db, _) = insert db bar in
+let (_, db, _) = delete db foo in
+let (_, db, _) = insert db foo in
+db
+
+let foo = {name = "foo"; phone_number = (1,2,3,4)} in
+let bar = {name = "bar"; phone_number = (4,3,2,1)} in
+let (_, db, _) = engine local_db {code = 0; contact = foo} in
+let (_, db, _) = engine db {code = 0; contact = bar} in
+let (_, db, _) = engine db {code = 1; contact = foo} in
+let (_, db, _) = engine db {code = 0; contact = foo} in
+db
+
 let proof_of_bug =
-  [| "Replace this string with your queries." |] ;;
+  let foo = {name = "foo"; phone_number = (1,2,3,4)} in
+  let bar = {name = "bar"; phone_number = (4,3,2,1)} in
+  [| {code = 0; contact = foo};
+     {code = 0; contact = bar};
+     {code = 1; contact = foo};
+     {code = 0; contact = foo} |] ;;
+
+let proof_of_bug =
+  [| {code = 0; contact = {name = "foo"; phone_number = (1,2,3,4)}};
+     {code = 0; contact = {name = "bar"; phone_number = (4,3,2,1)}};
+     {code = 1; contact = {name = "foo"; phone_number = (1,2,3,4)}};
+     {code = 0; contact = {name = "foo"; phone_number = (1,2,3,4)}} |] ;;
 
 let delete db contact =
-  "Replace this string with your implementation." ;;
+  let (status, db, contact) = search db contact in
+  if not status then (false, db, contact)
+  else
+    let cells i =
+      if db.contacts.(i).name = contact.name then
+        nobody
+      else
+        db.contacts.(i)
+    in
+    let reorder contacts =
+      let original_len = Array.length db.contacts in
+      contacts
+      |> Array.to_list
+      |> (fun l -> List.filter ((<>) nobody) l)
+      |> Array.of_list
+      |> (fun a -> nobody
+                   |> Array.make (original_len - Array.length a)
+                   |> Array.append a)
+    in
+    let db' = {
+      number_of_contacts = db.number_of_contacts - 1;
+      contacts = (Array.init (Array.length db.contacts) cells
+                  |> reorder)
+    }
+    in
+    (true, db', contact);;
 
-let update db contact =
-  "Replace this string with your implementation." ;;
-
-let engine db { code ; contact } =
-  "Replace this string with your implementation." ;;
+(* let update db contact =
+ *   "replace this string with your implementation." ;;
+ * 
+ * let engine db { code ; contact } =
+ *   "replace this string with your implementation." ;; *)
