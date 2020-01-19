@@ -199,8 +199,8 @@ let example =
                         [('n', Trie (Some 12, []));
                          ('d', Trie (Some 4, []));
                          ('a', Trie (Some 3, []))]));
-		             ('o', Trie (Some 7, []))]));
-	       ('A', Trie (Some 15, []))])
+                 ('o', Trie (Some 7, []))]));
+         ('A', Trie (Some 15, []))])
 
 let rec children_from_char (m : char_to_children) (c : char) : trie option =
   match m with
@@ -251,3 +251,158 @@ let insert (trie : trie) (word : string) (final_value : int) : trie =
       | Some trie -> Trie (value, update_children assoc_list letter (insert' tail trie))
   in
   insert' letters trie
+
+(* Chap 5 Exercise 1 *)
+
+type 'a bt =
+  | Empty
+  | Node of 'a bt * 'a * 'a bt
+
+let height t =
+  let rec height' t' count =
+    match t' with
+    | Empty -> 0
+    | Node (Empty, _, Empty) -> count + 1
+    | Node (l, _, r) ->
+      let tot = count + 1 in
+      let left_count = (height' l tot) in
+      let right_count = (height' r tot) in
+      if left_count > right_count
+      then left_count
+      else right_count
+  in
+  height' t 0
+
+let rec balanced t  =
+  match t with
+  | Empty -> true
+  | Node (Empty, _, Empty) -> true
+  | Node (_, _, Empty) -> false
+  | Node (Empty, _, _) -> false
+  | Node (l, _, r) ->
+    (balanced l) && (balanced r)
+
+(* Chap 5 Exercise 2 *)
+
+exception Stop_check
+
+let for_all p l =
+  try
+    List.fold_left
+      (fun acc x -> if p x then true else raise Stop_check)
+      true
+      l
+  with
+    Stop_check -> false
+
+let exists p l =
+  try
+    List.fold_left
+      (fun acc x -> if p x then raise Stop_check else false)
+      false
+      l
+  with
+    Stop_check -> true
+
+let sorted cmp l =
+  match l with
+  | [] -> true
+  | head :: tail ->
+    try
+      let (_, result) =
+        List.fold_left
+          (fun (prev, _) current -> if (cmp prev current) <= 0
+            then (current, true)
+            else raise Stop_check)
+          (head, true)
+          tail
+      in
+      result
+    with
+      Stop_check -> false
+
+
+(* Chap 6 Exercise 1 *)
+
+type e = EInt of int | EMul of e * e | EAdd of e * e
+
+let simplify = function
+  | EMul (EInt 1, e) | EMul (e, EInt 1) | EAdd (EInt 0, e) | EAdd (e, EInt 0) -> e
+  | EMul (EInt 0, e) | EMul (e, EInt 0) -> EInt 0
+  | e -> e
+
+let only_small_lists = function
+  | ([_] as l) | ([_; _] as l) -> l
+  | _ -> []
+
+let rec no_consecutive_repetition = function
+  | [] -> []
+  | [x] -> [x]
+  | x :: y :: ys when x = y -> no_consecutive_repetition (y :: ys)
+  | x :: y :: ys -> x :: (no_consecutive_repetition (y :: ys))
+
+(* Chap 5 Exercise 2 *)
+
+type 'a clist =
+  | CSingle of 'a
+  | CApp of 'a clist * 'a clist
+  | CEmpty
+
+let example =
+  CApp (CApp (CSingle 1,
+              CSingle 2),
+        CApp (CSingle 3,
+              CApp (CSingle 4, CEmpty)))
+
+let to_list l =
+  let rec to_list' acc l =
+  match l with
+  | CEmpty -> acc
+  | CSingle x -> x :: acc
+  | CApp (left, right) ->
+    to_list' acc left
+    |> fun acc -> to_list' acc right
+  in
+  to_list' [] l
+  |> List.rev
+
+let of_list l =
+  let rec of_list' acc l =
+    match l with
+    | [] -> acc
+    | head :: tail ->
+      begin match acc with
+        | CEmpty ->
+          of_list' (CSingle head) tail
+        | CSingle _ as x ->
+          of_list' (CApp (x, CSingle head)) tail
+        | CApp (CSingle _, CSingle _) as x ->
+          of_list' (CApp (x, CSingle head)) tail
+        | CApp ((CApp (_, _) as x), (CSingle _ as y)) ->
+          of_list' (CApp (x, CApp (y, CSingle head))) tail
+        | CApp (CApp _, CApp _) as app ->
+          of_list' (CApp (app, CSingle head)) tail
+      end
+  in
+  of_list' CEmpty l
+
+let append l1 l2 =
+  match (l1, l2) with
+  | (CEmpty, l2) -> l2
+  | (l1, CEmpty) -> l1
+  | _ -> CApp (l1, l2)
+
+let rec hd l =
+  match l with
+  | CEmpty -> None
+  | CSingle x -> Some x
+  | CApp (x, _) -> hd x
+
+let tl l =
+  match l with
+  | CEmpty -> None
+  | CSingle x -> Some CEmpty
+  | _ ->
+    let (_ :: tail) = (to_list l) in
+    Some (of_list tail)
+
